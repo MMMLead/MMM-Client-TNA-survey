@@ -88,26 +88,74 @@ const AdminDashboard: React.FC = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [selectedResponseIds, setSelectedResponseIds] = useState<string[]>([]);
+  const [deleteTarget, setDeleteTarget] = useState<'all' | 'selected' | string | null>(null);
 
-  const handleClearAllResponses = async () => {
+  const handleDeleteResponses = async (ids: string[]) => {
     setIsDeleting(true);
     try {
-      const q = query(collection(db, 'responses'));
-      const snapshot = await getDocs(q);
       const batch = writeBatch(db);
-      
-      snapshot.docs.forEach((document) => {
-        batch.delete(doc(db, 'responses', document.id));
+      ids.forEach((id) => {
+        batch.delete(doc(db, 'responses', id));
       });
-      
       await batch.commit();
+      setSelectedResponseIds([]);
+      setDeleteTarget(null);
       setShowDeleteConfirm(false);
+      if (typeof deleteTarget === 'string' && selectedResponse?.id === deleteTarget) {
+        setSelectedResponse(null);
+      }
     } catch (error) {
-      console.error("Error clearing responses:", error);
-      alert("Failed to clear responses. Please try again.");
+      console.error("Error deleting responses:", error);
+      alert("Failed to delete responses. Please try again.");
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const handleClearAllResponses = () => {
+    setDeleteTarget('all');
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedResponseIds.length === 0) return;
+    setDeleteTarget('selected');
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteIndividual = (id: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setDeleteTarget(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (deleteTarget === 'all') {
+      const q = query(collection(db, 'responses'));
+      const snapshot = await getDocs(q);
+      const ids = snapshot.docs.map(doc => doc.id);
+      await handleDeleteResponses(ids);
+    } else if (deleteTarget === 'selected') {
+      await handleDeleteResponses(selectedResponseIds);
+    } else if (typeof deleteTarget === 'string') {
+      await handleDeleteResponses([deleteTarget]);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedResponseIds.length === filteredResponses.length) {
+      setSelectedResponseIds([]);
+    } else {
+      setSelectedResponseIds(filteredResponses.map(r => r.id));
+    }
+  };
+
+  const toggleSelectResponse = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedResponseIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
   };
   const [activeTab, setActiveTab] = useState<'overview' | 'responses' | 'reports' | 'survey-analysis'>('overview');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -1048,13 +1096,24 @@ const AdminDashboard: React.FC = () => {
                   )}
                 </div>
 
-                <button
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-sm font-bold transition-all border border-red-100"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Clear All
-                </button>
+                <div className="flex items-center gap-2 border-l border-gray-200 pl-3">
+                  {selectedResponseIds.length > 0 && (
+                    <button
+                      onClick={handleDeleteSelected}
+                      className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg text-sm font-bold transition-all border border-red-100"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete Selected ({selectedResponseIds.length})
+                    </button>
+                  )}
+                  <button
+                    onClick={handleClearAllResponses}
+                    className="flex items-center gap-2 px-4 py-2 bg-white text-gray-600 hover:bg-gray-50 rounded-lg text-sm font-medium transition-all border border-gray-200"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Clear All
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1071,20 +1130,29 @@ const AdminDashboard: React.FC = () => {
                     <div className="flex items-center justify-center w-16 h-16 bg-red-100 text-red-600 rounded-2xl mb-6 mx-auto">
                       <AlertTriangle className="h-8 w-8" />
                     </div>
-                    <h3 className="text-2xl font-bold text-gray-900 text-center mb-2">Clear All Responses?</h3>
+                    <h3 className="text-2xl font-bold text-gray-900 text-center mb-2">
+                      {deleteTarget === 'all' ? 'Clear All Responses?' : 
+                       deleteTarget === 'selected' ? `Delete ${selectedResponseIds.length} Responses?` : 
+                       'Delete Response?'}
+                    </h3>
                     <p className="text-gray-500 text-center mb-8">
-                      This action will permanently delete all survey responses from the database. This cannot be undone.
+                      {deleteTarget === 'all' ? 'This action will permanently delete all survey responses from the database. This cannot be undone.' : 
+                       deleteTarget === 'selected' ? `This action will permanently delete the ${selectedResponseIds.length} selected responses. This cannot be undone.` : 
+                       'This action will permanently delete this survey response. This cannot be undone.'}
                     </p>
                     <div className="flex gap-3">
                       <button
-                        onClick={() => setShowDeleteConfirm(false)}
+                        onClick={() => {
+                          setShowDeleteConfirm(false);
+                          setDeleteTarget(null);
+                        }}
                         className="flex-1 px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-bold hover:bg-gray-200 transition-all"
                         disabled={isDeleting}
                       >
                         Cancel
                       </button>
                       <button
-                        onClick={handleClearAllResponses}
+                        onClick={confirmDelete}
                         className="flex-1 px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200 flex items-center justify-center gap-2"
                         disabled={isDeleting}
                       >
@@ -1094,7 +1162,7 @@ const AdminDashboard: React.FC = () => {
                             Deleting...
                           </>
                         ) : (
-                          'Yes, Delete All'
+                          deleteTarget === 'all' ? 'Yes, Delete All' : 'Yes, Delete'
                         )}
                       </button>
                     </div>
@@ -1107,6 +1175,14 @@ const AdminDashboard: React.FC = () => {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-gray-50/50">
+                    <th className="px-6 py-4 w-10">
+                      <input 
+                        type="checkbox"
+                        checked={filteredResponses.length > 0 && selectedResponseIds.length === filteredResponses.length}
+                        onChange={toggleSelectAll}
+                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                    </th>
                     <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Respondent</th>
                     <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
                     <th className="px-6 py-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">Submitted</th>
@@ -1118,8 +1194,19 @@ const AdminDashboard: React.FC = () => {
                     <tr 
                       key={res.id} 
                       onClick={() => setSelectedResponse(res)}
-                      className="hover:bg-gray-50 cursor-pointer transition-colors group"
+                      className={cn(
+                        "hover:bg-gray-50 cursor-pointer transition-colors group",
+                        selectedResponseIds.includes(res.id) && "bg-blue-50/30"
+                      )}
                     >
+                      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                        <input 
+                          type="checkbox"
+                          checked={selectedResponseIds.includes(res.id)}
+                          onChange={(e) => toggleSelectResponse(res.id, e as any)}
+                          className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        />
+                      </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col">
                           <span className="font-medium text-gray-900">{res.full_name}</span>
@@ -1135,9 +1222,18 @@ const AdminDashboard: React.FC = () => {
                         {format(res.submitted_at.toDate(), 'MMM d, yyyy HH:mm')}
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
-                          View <ChevronRight className="h-4 w-4" />
-                        </span>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={(e) => handleDeleteIndividual(res.id, e)}
+                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                            title="Delete response"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                            View <ChevronRight className="h-4 w-4" />
+                          </span>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -1600,6 +1696,13 @@ const AdminDashboard: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 print:hidden">
+                  <button 
+                    onClick={(e) => handleDeleteIndividual(selectedResponse.id, e)}
+                    className="p-2.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                    title="Delete Response"
+                  >
+                    <Trash2 className="h-5 w-5" />
+                  </button>
                   <button 
                     onClick={handlePrint}
                     className="p-2.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
