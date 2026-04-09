@@ -490,7 +490,10 @@ function SurveyApp() {
                   }`}>
                     {isCompleted ? <CheckCircle2 className="w-3.5 h-3.5" /> : idx + 1}
                   </div>
-                  <span className="text-sm font-medium truncate">{step.title}</span>
+                  <span className="text-sm font-medium truncate">
+                    {step.title}
+                    {step.role && step.title.includes("PART II") && ` (${step.role})`}
+                  </span>
                 </div>
               );
             })}
@@ -522,7 +525,9 @@ function SurveyApp() {
                   </div>
                   <h2 className="text-4xl font-extrabold text-slate-900 tracking-tight">
                     {currentStep.title}
-                    {activeRole && <span className="text-brand-teal ml-3 text-2xl">({activeRole})</span>}
+                    {activeRole && currentStep.title.includes("PART II") && (
+                      <span className="text-brand-teal ml-3 text-2xl">({activeRole})</span>
+                    )}
                   </h2>
                   {currentStep.description && (
                     <p className="text-slate-500 text-lg leading-relaxed whitespace-pre-line">{currentStep.description}</p>
