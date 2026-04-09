@@ -1,0 +1,40 @@
+{
+  "entities": {
+    "response": {
+      "title": "Survey Response",
+      "description": "A single survey submission from a Client evaluating their VA.",
+      "type": "object",
+      "properties": {
+        "user_type": { "type": "string", "enum": ["Medical Client / Business Client"] },
+        "full_name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string" },
+        "practice_type": { "type": "string" },
+        "va_count": { "type": "string" },
+        "submitted_at": { "type": "string", "format": "date-time" },
+        "sections": { "type": "object" }
+      },
+      "required": ["user_type", "full_name", "email", "role", "practice_type", "va_count", "submitted_at", "sections"]
+    },
+    "user": {
+      "title": "User Profile",
+      "description": "A user profile with role-based access control.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["admin", "responder"] }
+      },
+      "required": ["email", "role"]
+    }
+  },
+  "firestore": {
+    "/responses/{responseId}": {
+      "schema": "response",
+      "description": "A collection of survey responses."
+    },
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "A collection of user profiles for access control."
+    }
+  }
+}

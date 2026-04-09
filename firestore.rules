@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: responses
+    // Document ID: auto-generated
+    // Fields:
+    //   - full_name: string (required)
+    //   - email: string (required, email format)
+    //   - role: string (required)
+    //   - user_type: string (required)
+    //   - practice_type: string (required)
+    //   - va_count: string (required)
+    //   - submitted_at: timestamp (required)
+    //   - sections: map (required)
+    //
+    // Collection: users
+    // Document ID: auth.uid
+    // Fields:
+    //   - email: string (required)
+    //   - role: string (required, 'admin' or 'responder')
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          request.auth.token.email in [
+            "fenida@mymountainmover.com",
+            "maine@mymountainmover.com",
+            "marcklan@mymountainmover.com",
+            "denzel@mymountainmover.com"
+          ]);
+    }
+
+    function isValidResponse(data) {
+      return data.keys().hasAll(['full_name', 'email', 'role', 'submitted_at', 'user_type', 'practice_type', 'va_count', 'sections']) &&
+             data.full_name is string &&
+             data.email is string &&
+             data.role is string &&
+             data.user_type is string &&
+             data.practice_type is string &&
+             data.va_count is string &&
+             data.sections is map;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAdmin();
+    }
+
+    match /responses/{responseId} {
+      // Only admins can read all responses
+      allow read: if isAdmin();
+      
+      // Anyone can create a response (public survey)
+      allow create: if isValidResponse(request.resource.data);
+      
+      // Only admins can update or delete
+      allow update, delete: if isAdmin();
+    }
+  }
+}
