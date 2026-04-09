@@ -399,31 +399,55 @@ export function QuestionRenderer({
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
-                  <tr key={row} className="hover:bg-slate-50 transition-colors">
-                    <td className="p-4 border-b border-slate-100 font-medium text-slate-700 sticky left-0 bg-white z-10">
-                      <div className="space-y-2">
-                        <span>{row}</span>
-                        {((row === "Other" && gridValue[row]) || 
-                          (question.rowsWithInputs?.includes(row) && gridValue[row])) && (
-                          <div className="mt-2">
-                            <input
-                              type="text"
-                              value={row === "Other" ? (otherValue || "") : (optionDetails[row] || "")}
-                              onChange={(e) => {
-                                if (row === "Other") {
-                                  onOtherChange?.(e.target.value);
-                                } else {
-                                  onOptionDetailChange?.(row, e.target.value);
-                                }
-                              }}
-                              className="w-full px-3 py-1.5 text-sm rounded-lg border border-slate-200 focus:ring-2 focus:ring-brand-teal focus:border-transparent outline-none transition-all"
-                              placeholder={row === "Other" ? "Please specify..." : `Enter ${row.toLowerCase()} name...`}
-                              autoFocus={row === "Other"}
-                            />
+                {rows.map((row) => {
+                  const hasSubOptions = !!(question.rowsWithCheckboxes?.[row] && question.rateSubOptions);
+                  const isSelected = !!gridValue[row] && gridValue[row] !== "NA";
+
+                  return (
+                    <tr key={row} className="hover:bg-slate-50 transition-colors">
+                      <td 
+                        className="p-4 border-b border-slate-100 font-medium text-slate-700 sticky left-0 bg-white z-10"
+                        colSpan={hasSubOptions ? (1 + (question.columns?.length || 0)) : 1}
+                      >
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-3">
+                            {hasSubOptions && (
+                              <div 
+                                onClick={() => {
+                                  onChange({
+                                    ...gridValue,
+                                    [row]: isSelected ? undefined : "Selected",
+                                  });
+                                }}
+                                className={`w-5 h-5 rounded border flex items-center justify-center cursor-pointer transition-all flex-shrink-0 ${
+                                  isSelected ? "bg-brand-teal border-brand-teal" : "border-slate-300"
+                                }`}
+                              >
+                                {isSelected && <Check className="w-3.5 h-3.5 text-white" />}
+                              </div>
+                            )}
+                            <span>{row}</span>
                           </div>
-                        )}
-                        {question.rowsWithCheckboxes?.[row] && gridValue[row] && gridValue[row] !== "NA" && (
+                          {((row === "Other" && gridValue[row]) || 
+                            (question.rowsWithInputs?.includes(row) && gridValue[row])) && (
+                            <div className="mt-2">
+                              <input
+                                type="text"
+                                value={row === "Other" ? (otherValue || "") : (optionDetails[row] || "")}
+                                onChange={(e) => {
+                                  if (row === "Other") {
+                                    onOtherChange?.(e.target.value);
+                                  } else {
+                                    onOptionDetailChange?.(row, e.target.value);
+                                  }
+                                }}
+                                className="w-full px-3 py-1.5 text-sm rounded-lg border border-slate-200 focus:ring-2 focus:ring-brand-teal focus:border-transparent outline-none transition-all"
+                                placeholder={row === "Other" ? "Please specify..." : `Enter ${row.toLowerCase()} name...`}
+                                autoFocus={row === "Other"}
+                              />
+                            </div>
+                          )}
+                          {question.rowsWithCheckboxes?.[row] && isSelected && (
                           <motion.div 
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: "auto" }}
@@ -519,7 +543,7 @@ export function QuestionRenderer({
                         )}
                       </div>
                     </td>
-                    {question.columns?.map((col) => (
+                    {!hasSubOptions && question.columns?.map((col) => (
                       <td key={col} className="p-4 border-b border-slate-100 text-center">
                         <label className="inline-flex items-center justify-center w-full h-full cursor-pointer">
                           <input
@@ -558,7 +582,8 @@ export function QuestionRenderer({
                       </td>
                     ))}
                   </tr>
-                ))}
+                );
+              })}
               </tbody>
             </table>
           </div>
