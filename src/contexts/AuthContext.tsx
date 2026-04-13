@@ -23,7 +23,11 @@ const ADMIN_EMAILS = [
   "maine@mymountainmover.com",
   "marcklan@mymountainmover.com",
   "denzel@mymountainmover.com",
-  "glendale@mymountainmover.com"
+  "glendale@mymountainmover.com",
+  "amanda@mymountainmover.com",
+  "april@mymountainmover.com",
+  "joanamarie@mymountainmover.com",
+  "marg@mymountainmover.com"
 ];
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
