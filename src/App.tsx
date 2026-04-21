@@ -248,14 +248,21 @@ function SurveyApp() {
         }
 
         // Check options with inputs
-        if (q.optionsWithInputs && Array.isArray(val)) {
+        if (q.optionsWithInputs) {
           const details = (formData[`${q.id}_details`] as Record<string, string>) || {};
-          const missingDetails = q.optionsWithInputs.filter(opt => 
-            val.includes(opt) && (!details[opt] || details[opt].trim() === "")
-          );
-          if (missingDetails.length > 0) {
-            newErrors[q.id] = `Please specify details for: ${missingDetails.join(", ")}`;
-            isValid = false;
+          if (Array.isArray(val)) {
+            const missingDetails = q.optionsWithInputs.filter(opt => 
+              opt !== "Other" && val.includes(opt) && (!details[opt] || details[opt].trim() === "")
+            );
+            if (missingDetails.length > 0) {
+              newErrors[q.id] = `Please specify details for: ${missingDetails.join(", ")}`;
+              isValid = false;
+            }
+          } else if (val && q.optionsWithInputs.includes(val as string) && val !== "Other") {
+            if (!details[val as string] || (details[val as string] as string).trim() === "") {
+              newErrors[q.id] = `Please specify details for: ${val}`;
+              isValid = false;
+            }
           }
         }
 
